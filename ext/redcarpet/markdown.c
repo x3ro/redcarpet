@@ -2450,6 +2450,7 @@ sd_markdown_new(
 	md->active_char['&'] = MD_CHAR_ENTITITY;
 
 	if (extensions & MKDEXT_AUTOLINK) {
+		// TODO: This needs to be functionally merged with MD_CHAR_FUNCTION_CALL
 		//md->active_char[':'] = MD_CHAR_AUTOLINK_URL;
 		md->active_char['@'] = MD_CHAR_AUTOLINK_EMAIL;
 		md->active_char['w'] = MD_CHAR_AUTOLINK_WWW;
