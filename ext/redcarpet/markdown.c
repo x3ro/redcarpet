@@ -74,6 +74,7 @@ static size_t char_autolink_email(struct buf *ob, struct sd_markdown *rndr, uint
 static size_t char_autolink_www(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
 static size_t char_link(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
 static size_t char_superscript(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
+static size_t char_function_call(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
 
 enum markdown_char_t {
 	MD_CHAR_NONE = 0,
@@ -88,6 +89,7 @@ enum markdown_char_t {
 	MD_CHAR_AUTOLINK_EMAIL,
 	MD_CHAR_AUTOLINK_WWW,
 	MD_CHAR_SUPERSCRIPT,
+	MD_CHAR_FUNCTION_CALL,
 };
 
 static char_trigger markdown_char_ptrs[] = {
@@ -103,6 +105,7 @@ static char_trigger markdown_char_ptrs[] = {
 	&char_autolink_email,
 	&char_autolink_www,
 	&char_superscript,
+	&char_function_call,
 };
 
 /* render • structure containing one particular render */
@@ -1104,6 +1107,65 @@ char_superscript(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t
 	rndr_popbuf(rndr, BUFFER_SPAN);
 
 	return (sup_start == 2) ? sup_len + 1 : sup_len;
+}
+
+static size_t
+char_function_call(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size)
+{
+	size_t length, name_start, name_length, parameter_start, parameter_length;
+	struct buf *name = bufnew(1);
+	struct buf *parameters = bufnew(1);
+
+	printf("lol! %tu, %tu \n", offset, size);
+
+	if (!rndr->cb.function_call)
+		return 0;
+
+	// Minimum function call length is, for example, ::x(), i.e. 5 characters
+	if (size < 5)
+		return 0;
+
+	// Must begin with two colons
+	if(data[1] != ':')
+		return 0;
+
+	name_start = length = 2;
+	name_length = 0;
+
+	while(length < size && data[length] != '(') {
+		bufputc(name, data[length]);
+		name_length++;
+		length++;
+	}
+
+	if(length == size || name_length == 0)
+		return 0;
+
+	length++;
+	parameter_start = length;
+	parameter_length = 0;
+
+	while(length < size && data[length] != ')') {
+		bufputc(parameters, data[length]);
+		parameter_length++;
+		length++;
+	}
+
+	if(data[length] != ')')
+		return 0;
+
+	length++;
+
+	//printf("Name Start: %tu \nName length: %tu \nParameter Start: %tu \nParameter Length: %tu \nLength: %tu \nSize: %tu \n\n", name_start, name_length, parameter_start, parameter_length, length, size);
+	bufcstr(name);
+	bufcstr(parameters);
+
+	rndr->cb.function_call(ob, name, parameters, rndr->opaque);
+
+	bufrelease(name);
+	bufrelease(parameters);
+
+	return length;
 }
 
 /*********************************
@@ -2385,10 +2447,12 @@ sd_markdown_new(
 	md->active_char['&'] = MD_CHAR_ENTITITY;
 
 	if (extensions & MKDEXT_AUTOLINK) {
-		md->active_char[':'] = MD_CHAR_AUTOLINK_URL;
+		//md->active_char[':'] = MD_CHAR_AUTOLINK_URL;
 		md->active_char['@'] = MD_CHAR_AUTOLINK_EMAIL;
 		md->active_char['w'] = MD_CHAR_AUTOLINK_WWW;
 	}
+
+	md->active_char[':'] = MD_CHAR_FUNCTION_CALL;
 
 	if (extensions & MKDEXT_SUPERSCRIPT)
 		md->active_char['^'] = MD_CHAR_SUPERSCRIPT;

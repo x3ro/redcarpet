@@ -207,6 +207,12 @@ rndr_superscript(struct buf *ob, const struct buf *text, void *opaque)
 	SPAN_CALLBACK("superscript", 1, buf2str(text));
 }
 
+static int
+rndr_function_call(struct buf *ob, const struct buf *function_name, const struct buf *parameters, void *opaque)
+{
+	SPAN_CALLBACK("function_call", 2, buf2str(function_name), buf2str(parameters));
+}
+
 /**
  * direct writes
  */
@@ -258,6 +264,7 @@ static struct sd_callbacks rb_redcarpet_callbacks = {
 	rndr_triple_emphasis,
 	rndr_strikethrough,
 	rndr_superscript,
+	rndr_function_call,
 
 	rndr_entity,
 	rndr_normal_text,
@@ -290,6 +297,7 @@ static const char *rb_redcarpet_method_names[] = {
 	"triple_emphasis",
 	"strikethrough",
 	"superscript",
+	"function_call",
 
 	"entity",
 	"normal_text",
