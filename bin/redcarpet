@@ -15,10 +15,11 @@ root = File.expand_path('../../', __FILE__)
 $:.unshift File.expand_path('lib', root)
 
 require 'redcarpet'
+require 'redcarpet/render_function'
 
 render_extensions = {}
 parse_extensions = {}
-renderer = Redcarpet::Render::HTML
+renderer = Redcarpet::Render::Test
 
 ARGV.delete_if do |arg|
   if arg =~ /^--render-([\w-]+)$/
@@ -34,5 +35,7 @@ ARGV.delete_if do |arg|
   end
 end
 
-render = renderer.new(render_extensions)
+render = renderer.new
+require 'pp'
+pp render
 STDOUT.write(Redcarpet::Markdown.new(render, parse_extensions).render(ARGF.read))
