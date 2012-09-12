@@ -1138,6 +1138,8 @@ char_function_call(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size
 		length++;
 	}
 
+	// Bail out if we didn't find an opening "(" in the current line
+	// or if the opening "(" came directly after the "::".
 	if(length == size || name_length == 0)
 		return 0;
 
@@ -1151,6 +1153,7 @@ char_function_call(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size
 		length++;
 	}
 
+	// Bail out if there was no closing ")"
 	if(data[length] != ')')
 		return 0;
 
