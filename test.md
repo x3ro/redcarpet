@@ -6,7 +6,7 @@ some **simple** text!
 
 ## head2
 
-foobar! rofl _penis_ testbar [test](link) rofl \func{bar}{lol
+foobar! rofl _penis_ testbar [test](link) rofl \func{bar}{lol}
 
 * some
 
