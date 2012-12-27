@@ -723,6 +723,7 @@ char_escape(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offs
 // PyMarkdown begin: Function syntax parsing
 
 // Utility method that actually copies the c-string from the buffer.
+// TODO: Do we still need this?
 // TODO: This should be moved elsewhere.
 const char * bufcstrcopy(struct buf *buf)
 {
@@ -743,13 +744,10 @@ char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t of
 	size_t end = 1;
 	size_t begin = 0;
 
-	// TODO: The callback needs to be written an invoked
-	//if(!rndr->cb.function)
-	//	return 0;
+	if(!rndr->cb.function)
+		return 0;
 
 	function_name = rndr_newbuf(rndr, BUFFER_SPAN);
-	work = rndr_newbuf(rndr, BUFFER_SPAN);
-
 
 	// Begin: Extract function name
 	while (end < size && isalnum(data[end])) {
@@ -757,7 +755,6 @@ char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t of
 	}
 
 	bufput(function_name, data + 1, end - 1);
-	//function_name = bufcstrcopy(function_name);
 	// End: Extract function name
 
 	// In case the function is not parameterless, we still have stuff to do
@@ -765,7 +762,7 @@ char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t of
 		stack_init(&params, 2);
 
 		while(data[end] == '{') {
-			bufreset(work);
+			work = rndr_newbuf(rndr, BUFFER_SPAN);
 
 			end++; // Skip the opening curly bracket
 			begin = end;
@@ -777,35 +774,24 @@ char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t of
 			assert(data[end] == '}' && "Function opening-bracket did not have a matching closing bracket");
 
 			bufput(work, data + begin, end - begin);
-			stack_push(&params, bufcstrcopy(work));
+			stack_push(&params, work);
 
 			end++; // Skip the closing curly bracket
 		}
 	}
 
-	// Debugging
-	// TODO: Remove
-	printf("\n\n---Debugging---\n");
-	printf("function_name: %s\n", function_name);
-	char * param = (char*) stack_pop(&params);
-	int i = 1;
-	while(param != NULL) {
-		printf("param %d: %s\n", i, param);
-		i++;
-		param = (char*) stack_pop(&params);
-	}
+	rndr->cb.function(ob, function_name, &params, rndr->opaque);
 
 	// Clean up
 	rndr_popbuf(rndr, BUFFER_SPAN);
-	rndr_popbuf(rndr, BUFFER_SPAN);
 	while(params.size > 0) {
-		free(stack_pop(&params));
+		stack_pop(&params);
+		rndr_popbuf(rndr, BUFFER_SPAN);
 	}
 	stack_free(&params);
 
 	return end;
 }
-
 // PyMarkdown end: Function syntax parsing
 
 

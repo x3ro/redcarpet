@@ -52,7 +52,9 @@ module Redcarpet
         content
       end
 
-
+      def function(name, args)
+        custom_span(name, *args)
+      end
 
       # -------------------------
       # Building the symbol table
@@ -78,6 +80,12 @@ module Redcarpet
         "%s"
       end
 
+      # Same as span, only for custom method invocations with the \function{foo} syntax
+      def custom_span(method_name, *args)
+        @span_stack.push({:method => method_name, :content => "", :args => args, :custom => true})
+        "%s"
+      end
+
 
 
       # --------------------------
@@ -88,13 +96,16 @@ module Redcarpet
         out = build_helper(@symbol_table, 0)
 
         "import PyMarkdown.test_renderer as renderer \n" +
+        "import PyMarkdown.test_customs as custom \n" + # TODO: only temporary
         "print ''.join([ #{out} ])"
       end
 
       def build_helper(that, level)
         out = [ ]
         that.each do |x|
-          if x[:children].nil?
+          if x[:custom]
+            out.push build_custom_span(x, level + 1)
+          elsif x[:children].nil?
             out.push build_span(x, level + 1)
           else
             out.push build_block(x, level + 1)
@@ -114,6 +125,10 @@ module Redcarpet
         tabify(pythonize(x), level)
       end
 
+      def build_custom_span(x, level)
+        tabify(custom_pythonize(x), level)
+      end
+
 
 
       # --------------
@@ -129,6 +144,13 @@ module Redcarpet
         out = "renderer.#{x[:method]}(\"\"\"#{x[:content]}\"\"\""
         out += " % (#{children})" if not children.nil?
         out += ", " + string_args if x[:args].length > 0
+        "#{out})"
+      end
+
+      def custom_pythonize(x)
+        string_args = [x[:args].map { |x| "\"\"\"#{x}\"\"\"" } ].flatten.join(", ")
+        out = "custom.#{x[:method]}("
+        out += string_args if x[:args].length > 0
         "#{out})"
       end
 

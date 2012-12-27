@@ -20,6 +20,7 @@
 #define UPSKIRT_MARKDOWN_H
 
 #include "buffer.h"
+#include "stack.h" // For PyMarkdown
 #include "autolink.h"
 
 #ifdef __cplusplus
@@ -97,6 +98,9 @@ struct sd_callbacks {
 	/* header and footer */
 	void (*doc_header)(struct buf *ob, void *opaque);
 	void (*doc_footer)(struct buf *ob, void *opaque);
+
+	/* PyMarkdown */
+	int (*function)(struct buf *ob, const struct buf *function, const struct stack *params, void *opaque);
 };
 
 struct sd_markdown;
