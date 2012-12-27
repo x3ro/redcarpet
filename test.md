@@ -1,10 +1,12 @@
 # head1 **foo**
 
+\test{test}
+
 some **simple** text!
 
 ## head2
 
-foobar! rofl _penis_ testbar [test](link) rofl \func{bar}{lol }
+foobar! rofl _penis_ testbar [test](link) rofl \func{bar}{lol
 
 * some
 
@@ -16,3 +18,9 @@ foobar! rofl _penis_ testbar [test](link) rofl \func{bar}{lol }
 
 > a test **quote**
 > with a paragraph
+
+\multi{
+    line
+    bla
+    rofl
+}
