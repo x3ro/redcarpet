@@ -744,6 +744,7 @@ char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t of
 	size_t end = 1;
 	size_t begin = 0;
 
+	// TODO: The callback needs to be written an invoked
 	//if(!rndr->cb.function)
 	//	return 0;
 
