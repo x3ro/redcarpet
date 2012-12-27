@@ -4,7 +4,7 @@ some **simple** text!
 
 ## head2
 
-foobar! rofl _penis_ testbar [test](link)
+foobar! rofl _penis_ testbar [test](link) rofl \func{bar}{lol }
 
 * some
 
