@@ -75,6 +75,10 @@ static size_t char_autolink_www(struct buf *ob, struct sd_markdown *rndr, uint8_
 static size_t char_link(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
 static size_t char_superscript(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
 
+// Begin: PyMarkdown
+static size_t char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
+// End: PyMarkdown
+
 enum markdown_char_t {
 	MD_CHAR_NONE = 0,
 	MD_CHAR_EMPHASIS,
@@ -694,8 +698,12 @@ char_escape(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offs
 	struct buf work = { 0, 0, 0, 0 };
 
 	if (size > 1) {
+		// PyMarkdown begin: If backslash is not followed by escapable character, we assume
+		// that a LaTeX style function invocation follows.
 		if (strchr(escape_chars, data[1]) == NULL)
-			return 0;
+			return char_function(ob, rndr, data, offset, size);
+
+		// PyMarkdown end
 
 		if (rndr->cb.normal_text) {
 			work.data = data + 1;
@@ -709,6 +717,93 @@ char_escape(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offs
 
 	return 2;
 }
+
+
+
+// PyMarkdown begin: Function syntax parsing
+
+// Utility method that actually copies the c-string from the buffer.
+// TODO: This should be moved elsewhere.
+const char * bufcstrcopy(struct buf *buf)
+{
+   char * string =  bufcstr(buf);
+   char *stringcopy = malloc (1 + strlen (string));
+   if (stringcopy)
+       strcpy (stringcopy, string);
+   else  fprintf (stderr, "malloc failure!");
+
+   return stringcopy;
+}
+
+static size_t
+char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size)
+{
+	struct buf *work;
+	struct stack params;
+	uint8_t *function_name;
+	size_t end = 1;
+	size_t begin = 0;
+
+	//if(!rndr->cb.function)
+	//	return 0;
+
+	work = rndr_newbuf(rndr, BUFFER_SPAN);
+
+	// Begin: Extract function name
+	while (end < size && isalnum(data[end])) {
+		end++;
+	}
+
+	bufput(work, data + 1, end - 1);
+	function_name = bufcstrcopy(work);
+	// End: Extract function name
+
+	// In case the function is not parameterless, we still have stuff to do
+	if(data[end] == '{') {
+		stack_init(&params, 2);
+
+		while(data[end] == '{') {
+			bufreset(work);
+
+			end++; // Skip the opening curly brace
+			begin = end;
+
+			while (end < size && data[end] != '}') {
+				end++;
+			}
+
+			bufput(work, data + begin, end - begin);
+			stack_push(&params, bufcstrcopy(work));
+
+			assert(data[end] == '}');
+			end++; // Skip the closing curly brace
+		}
+	}
+
+	// Debugging
+	// TODO: Remove
+	printf("\n\n---Debugging---\n");
+	printf("function_name: %s\n", function_name);
+	char * param = (char*) stack_pop(&params);
+	int i = 1;
+	while(param != NULL) {
+		printf("param %d: %s\n", i, param);
+		i++;
+		param = (char*) stack_pop(&params);
+	}
+
+	// Clean up
+	rndr_popbuf(rndr, BUFFER_SPAN);
+	while(params.size > 0) {
+		free(stack_pop(&params));
+	}
+
+	return end;
+}
+
+// PyMarkdown end: Function syntax parsing
+
+
 
 /* char_entity • '&' escaped when it doesn't belong to an entity */
 /* valid entities are assumed to be anything matching &#?[A-Za-z0-9]+; */
