@@ -738,9 +738,8 @@ const char * bufcstrcopy(struct buf *buf)
 static size_t
 char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size)
 {
-	struct buf *work;
+	struct buf *function_name, *work;
 	struct stack params;
-	uint8_t *function_name;
 	size_t end = 1;
 	size_t begin = 0;
 
@@ -748,15 +747,17 @@ char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t of
 	//if(!rndr->cb.function)
 	//	return 0;
 
+	function_name = rndr_newbuf(rndr, BUFFER_SPAN);
 	work = rndr_newbuf(rndr, BUFFER_SPAN);
+
 
 	// Begin: Extract function name
 	while (end < size && isalnum(data[end])) {
 		end++;
 	}
 
-	bufput(work, data + 1, end - 1);
-	function_name = bufcstrcopy(work);
+	bufput(function_name, data + 1, end - 1);
+	//function_name = bufcstrcopy(function_name);
 	// End: Extract function name
 
 	// In case the function is not parameterless, we still have stuff to do
@@ -766,18 +767,19 @@ char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t of
 		while(data[end] == '{') {
 			bufreset(work);
 
-			end++; // Skip the opening curly brace
+			end++; // Skip the opening curly bracket
 			begin = end;
 
 			while (end < size && data[end] != '}') {
 				end++;
 			}
 
+			assert(data[end] == '}' && "Function opening-bracket did not have a matching closing bracket");
+
 			bufput(work, data + begin, end - begin);
 			stack_push(&params, bufcstrcopy(work));
 
-			assert(data[end] == '}');
-			end++; // Skip the closing curly brace
+			end++; // Skip the closing curly bracket
 		}
 	}
 
@@ -798,6 +800,7 @@ char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t of
 	while(params.size > 0) {
 		free(stack_pop(&params));
 	}
+	stack_free(&params);
 
 	return end;
 }
