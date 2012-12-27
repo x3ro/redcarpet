@@ -797,6 +797,7 @@ char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t of
 
 	// Clean up
 	rndr_popbuf(rndr, BUFFER_SPAN);
+	rndr_popbuf(rndr, BUFFER_SPAN);
 	while(params.size > 0) {
 		free(stack_pop(&params));
 	}
