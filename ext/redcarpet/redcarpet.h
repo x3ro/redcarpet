@@ -12,6 +12,7 @@
 #	define redcarpet_str_new(data, size, enc) rb_str_new(data, size)
 #endif
 
+#include "stack.h" // For PyMarkdown
 #include "markdown.h"
 #include "html.h"
 

@@ -75,6 +75,10 @@ static size_t char_autolink_www(struct buf *ob, struct sd_markdown *rndr, uint8_
 static size_t char_link(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
 static size_t char_superscript(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
 
+// Begin: PyMarkdown
+static size_t char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size);
+// End: PyMarkdown
+
 enum markdown_char_t {
 	MD_CHAR_NONE = 0,
 	MD_CHAR_EMPHASIS,
@@ -694,8 +698,12 @@ char_escape(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offs
 	struct buf work = { 0, 0, 0, 0 };
 
 	if (size > 1) {
+		// PyMarkdown begin: If backslash is not followed by escapable character, we assume
+		// that a LaTeX style function invocation follows.
 		if (strchr(escape_chars, data[1]) == NULL)
-			return 0;
+			return char_function(ob, rndr, data, offset, size);
+
+		// PyMarkdown end
 
 		if (rndr->cb.normal_text) {
 			work.data = data + 1;
@@ -709,6 +717,69 @@ char_escape(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offs
 
 	return 2;
 }
+
+
+
+// PyMarkdown begin: Function syntax parsing
+static size_t
+char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size)
+{
+	struct buf *function_name, *work;
+	struct stack params;
+	size_t end = 1;
+	size_t begin = 0;
+
+	if(!rndr->cb.function)
+		return 0;
+
+	function_name = rndr_newbuf(rndr, BUFFER_SPAN);
+
+	// Begin: Extract function name
+	while (end < size && isalnum(data[end])) {
+		end++;
+	}
+
+	bufput(function_name, data + 1, end - 1);
+	// End: Extract function name
+
+	// In case the function is not parameterless, we still have stuff to do
+	if(data[end] == '{') {
+		stack_init(&params, 2);
+
+		while(data[end] == '{') {
+			work = rndr_newbuf(rndr, BUFFER_SPAN);
+
+			end++; // Skip the opening curly bracket
+			begin = end;
+
+			while (end < size && data[end] != '}') {
+				end++;
+			}
+
+			assert(data[end] == '}' && "Function opening-bracket did not have a matching closing bracket");
+
+			bufput(work, data + begin, end - begin);
+			stack_push(&params, work);
+
+			end++; // Skip the closing curly bracket
+		}
+	}
+
+	rndr->cb.function(ob, function_name, &params, rndr->opaque);
+
+	// Clean up
+	rndr_popbuf(rndr, BUFFER_SPAN);
+	while(params.size > 0) {
+		stack_pop(&params);
+		rndr_popbuf(rndr, BUFFER_SPAN);
+	}
+	stack_free(&params);
+
+	return end;
+}
+// PyMarkdown end: Function syntax parsing
+
+
 
 /* char_entity • '&' escaped when it doesn't belong to an entity */
 /* valid entities are assumed to be anything matching &#?[A-Za-z0-9]+; */
@@ -1381,6 +1452,52 @@ prefix_uli(uint8_t *data, size_t size)
 /* parse_block • parsing of one block, returning next uint8_t to parse */
 static void parse_block(struct buf *ob, struct sd_markdown *rndr,
 			uint8_t *data, size_t size);
+
+
+// PyMarkdown begin
+/* parse_yaml_frontmatter • Returns the number of consumed characters */
+static size_t
+parse_yaml_frontmatter(struct buf *ob, struct sd_markdown *rndr, const uint8_t *data, size_t size)
+{
+	size_t beg, end;
+	struct buf *yaml;
+
+	beg = 0;
+	yaml = bufnew(64);
+
+	while(beg < size && data[beg] == '-') {
+		beg++;
+	}
+
+	// Bail out because no three (or more) hyphens where detected, or because the hyphens
+	// aren't terminated by a newline.
+	if(beg < 3 || data[beg] != '\n') {
+		return 0;
+	}
+	beg++; // Skip the newline
+
+	end = beg;
+	while((end+2) < size && !(data[end] == '-' && data[end+1] == '-' && data[end+2] == '-')) {
+		bufputc(yaml, data[end]);
+		end++;
+	}
+
+	while(end < size && data[end] == '-') {
+		end++;
+	}
+
+	// If the closing hrule is terminated by a newline, skip that one as well.
+	if(data[end] == '\n') {
+		end++;
+	}
+
+	if(rndr->cb.yaml_frontmatter) {
+		rndr->cb.yaml_frontmatter(yaml, rndr->opaque);
+	}
+
+	return end;
+}
+// PyMarkdown end
 
 
 /* parse_blockquote • handles parsing of a blockquote fragment */
@@ -2479,6 +2596,10 @@ sd_markdown_render(struct buf *ob, const uint8_t *document, size_t doc_size, str
 	 * discourages having these in UTF-8 documents */
 	if (doc_size >= 3 && memcmp(document, UTF8_BOM, 3) == 0)
 		beg += 3;
+
+	// PyMarkdown begin
+	beg += parse_yaml_frontmatter(ob, md, document, doc_size);
+	// PyMarkdown end
 
 	while (beg < doc_size) /* iterating over lines */
 		if (is_ref(document, beg, doc_size, &end, md->refs))

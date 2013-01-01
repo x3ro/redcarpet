@@ -234,6 +234,32 @@ rndr_doc_footer(struct buf *ob, void *opaque)
 	BLOCK_CALLBACK("doc_footer", 0);
 }
 
+/* Begin: PyMarkdown */
+static int
+rndr_function(struct buf *ob, const struct buf *function, const struct stack *params, void *opaque)
+{
+	struct redcarpet_renderopt *opt = opaque;
+	int i;
+	VALUE args;
+
+	args = rb_ary_new();
+	for(i=0; i<params->size; i++) {
+		struct buf * current = (struct buf *) params->item[i];
+		rb_ary_push(args, buf2str(current));
+	}
+
+	SPAN_CALLBACK("function", 2, buf2str(function), args);
+}
+
+static void
+rndr_yaml_frontmatter(const struct buf *yaml, void *opaque)
+{
+	struct redcarpet_renderopt *opt = opaque;
+	rb_funcall(opt->self, rb_intern("yaml_frontmatter"), 1, buf2str(yaml));
+}
+
+/* End: PyMarkdown */
+
 static int
 cb_link_attribute(VALUE key, VALUE val, VALUE payload)
 {
@@ -285,6 +311,10 @@ static struct sd_callbacks rb_redcarpet_callbacks = {
 
 	rndr_doc_header,
 	rndr_doc_footer,
+
+	/* PyMarkdown */
+	rndr_function,
+	rndr_yaml_frontmatter
 };
 
 static const char *rb_redcarpet_method_names[] = {
@@ -316,7 +346,11 @@ static const char *rb_redcarpet_method_names[] = {
 	"normal_text",
 
 	"doc_header",
-	"doc_footer"
+	"doc_footer",
+
+	/* PyMarkdown */
+	"function",
+	"yaml_frontmatter"
 };
 
 static const size_t rb_redcarpet_method_count = sizeof(rb_redcarpet_method_names)/sizeof(char *);
