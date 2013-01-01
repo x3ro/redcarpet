@@ -721,21 +721,6 @@ char_escape(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offs
 
 
 // PyMarkdown begin: Function syntax parsing
-
-// Utility method that actually copies the c-string from the buffer.
-// TODO: Do we still need this?
-// TODO: This should be moved elsewhere.
-const char * bufcstrcopy(struct buf *buf)
-{
-   char * string =  bufcstr(buf);
-   char *stringcopy = malloc (1 + strlen (string));
-   if (stringcopy)
-       strcpy (stringcopy, string);
-   else  fprintf (stderr, "malloc failure!");
-
-   return stringcopy;
-}
-
 static size_t
 char_function(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t offset, size_t size)
 {
