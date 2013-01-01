@@ -1,3 +1,7 @@
+---
+yaml: lol
+test: bar
+---
 # head1 **foo**
 
 \test{test}

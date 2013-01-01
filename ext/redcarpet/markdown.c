@@ -1454,6 +1454,52 @@ static void parse_block(struct buf *ob, struct sd_markdown *rndr,
 			uint8_t *data, size_t size);
 
 
+// PyMarkdown begin
+/* parse_yaml_frontmatter • Returns the number of consumed characters */
+static size_t
+parse_yaml_frontmatter(struct buf *ob, struct sd_markdown *rndr, const uint8_t *data, size_t size)
+{
+	size_t beg, end;
+	struct buf *yaml;
+
+	beg = 0;
+	yaml = bufnew(64);
+
+	while(beg < size && data[beg] == '-') {
+		beg++;
+	}
+
+	// Bail out because no three (or more) hyphens where detected, or because the hyphens
+	// aren't terminated by a newline.
+	if(beg < 3 || data[beg] != '\n') {
+		return 0;
+	}
+	beg++; // Skip the newline
+
+	end = beg;
+	while((end+2) < size && !(data[end] == '-' && data[end+1] == '-' && data[end+2] == '-')) {
+		bufputc(yaml, data[end]);
+		end++;
+	}
+
+	while(end < size && data[end] == '-') {
+		end++;
+	}
+
+	// If the closing hrule is terminated by a newline, skip that one as well.
+	if(data[end] == '\n') {
+		end++;
+	}
+
+	if(rndr->cb.yaml_frontmatter) {
+		rndr->cb.yaml_frontmatter(yaml, rndr->opaque);
+	}
+
+	return end;
+}
+// PyMarkdown end
+
+
 /* parse_blockquote • handles parsing of a blockquote fragment */
 static size_t
 parse_blockquote(struct buf *ob, struct sd_markdown *rndr, uint8_t *data, size_t size)
@@ -2550,6 +2596,10 @@ sd_markdown_render(struct buf *ob, const uint8_t *document, size_t doc_size, str
 	 * discourages having these in UTF-8 documents */
 	if (doc_size >= 3 && memcmp(document, UTF8_BOM, 3) == 0)
 		beg += 3;
+
+	// PyMarkdown begin
+	beg += parse_yaml_frontmatter(ob, md, document, doc_size);
+	// PyMarkdown end
 
 	while (beg < doc_size) /* iterating over lines */
 		if (is_ref(document, beg, doc_size, &end, md->refs))

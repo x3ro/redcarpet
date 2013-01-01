@@ -101,6 +101,7 @@ struct sd_callbacks {
 
 	/* PyMarkdown */
 	int (*function)(struct buf *ob, const struct buf *function, const struct stack *params, void *opaque);
+	void (*yaml_frontmatter)(const struct buf *yaml, void *opaque);
 };
 
 struct sd_markdown;
