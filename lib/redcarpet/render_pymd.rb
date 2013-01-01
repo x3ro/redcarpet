@@ -1,3 +1,6 @@
+require 'yaml'
+require 'pp'
+
 module Redcarpet
   module Render
     class PyMarkdown < Base
@@ -54,6 +57,11 @@ module Redcarpet
 
       def function(name, args)
         custom_span(name, *args)
+      end
+
+      def yaml_frontmatter(yaml_string)
+        yaml = YAML.load(yaml_string)
+        pp yaml
       end
 
       # -------------------------
